@@ -16,6 +16,15 @@
     - { role: "container-engine", tags: "container-engine", when: deploy_container_engine }
     - { role: download, tags: download, when: "not skip_downloads" }
 
+# New Entry: Setup Container Registry
+- name: Setup Container Registry
+  hosts: k8s_cluster
+  gather_facts: false
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  environment: "{{ proxy_disable_env }}"
+  roles:
+    - { role: container_registry, tags: container-registry }
+
 - name: Install etcd
   import_playbook: install_etcd.yml
 
@@ -46,7 +55,7 @@
   environment: "{{ proxy_disable_env }}"
   roles:
     - { role: kubespray-defaults }
-    - { role: kubernetes/kubeadm, tags: kubeadm}
+    - { role: kubernetes/kubeadm, tags: kubeadm }
     - { role: kubernetes/node-label, tags: node-label }
     - { role: kubernetes/node-taint, tags: node-taint }
     - { role: network_plugin, tags: network }
