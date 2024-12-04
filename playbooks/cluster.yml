@@ -16,56 +16,21 @@
     - { role: "container-engine", tags: "container-engine", when: deploy_container_engine }
     - { role: download, tags: download, when: "not skip_downloads" }
 
-- name: Setup Private Registry with Fallback to Docker.io
-  hosts: k8s_cluster
-  gather_facts: false
-  become: yes
-  tasks:
-    - name: Create directory for registry data
-      file:
-        path: /opt/registry/data
-        state: directory
-        owner: root
-        group: root
-        mode: 0755
+- name: Configure containerd registry mirrors for Docker.io fallback
+  blockinfile:
+    path: /etc/containerd/config.toml
+    marker: "# {mark} ANSIBLE MANAGED BLOCK"
+    block: |
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5000"]
+          endpoint = ["http://localhost:5000"]
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+          endpoint = ["https://registry-1.docker.io"]
 
-    - name: Pull registry image
-      command: ctr image pull docker.io/library/registry:2
-
-    - name: Start registry container
-      command: >
-        ctr run --detach
-        --mount type=bind,src=/opt/registry/data,dst=/var/lib/registry,options=rbind:rw
-        --net-host
-        docker.io/library/registry:2
-        registry
-
-    - name: Configure containerd for private registry and Docker.io fallback
-      blockinfile:
-        path: /etc/containerd/certs.d/localhost:5000/hosts.toml
-        create: yes
-        marker: "# {mark} ANSIBLE MANAGED BLOCK"
-        block: |
-          server = "http://localhost:5000"
-
-          [host."http://localhost:5000"]
-            capabilities = ["pull", "resolve", "push"]
-
-    - name: Configure containerd registry mirrors
-      blockinfile:
-        path: /etc/containerd/config.toml
-        marker: "# {mark} ANSIBLE MANAGED BLOCK"
-        block: |
-          [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
-            [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5000"]
-              endpoint = ["http://localhost:5000"]
-            [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
-              endpoint = ["https://registry-1.docker.io"]
-
-    - name: Restart containerd to apply registry configuration
-      service:
-        name: containerd
-        state: restarted
+- name: Restart containerd
+  service:
+    name: containerd
+    state: restarted
 
 
 - name: Install etcd

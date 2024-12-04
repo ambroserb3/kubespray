@@ -1,0 +1,35 @@
+---
+- name: Install Nephio on Kubernetes
+  hosts: kube_control_plane
+  become: yes
+  tasks:
+    - name: Ensure kpt is installed
+      shell: |
+        curl -s https://i.jpillora.com/GoogleContainerTools/kpt! | bash
+      args:
+        executable: /bin/bash
+
+    - name: Create Nephio project directory
+      file:
+        path: ~/nephio
+        state: directory
+        mode: 0755
+
+    - name: Fetch Nephio package
+      command: >
+        kpt pkg get https://github.com/nephio-project/nephio/infra/nephio-init ~/nephio/nephio-init
+
+    - name: Create Nephio namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: nephio-system
+
+    - name: Render Nephio configurations
+      command: kpt fn render ~/nephio/nephio-init
+
+    - name: Apply Nephio configurations
+      command: kubectl apply -f ~/nephio/nephio-init
