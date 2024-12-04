@@ -16,7 +16,7 @@
     - { role: "container-engine", tags: "container-engine", when: deploy_container_engine }
     - { role: download, tags: download, when: "not skip_downloads" }
 
-# New Entry: Setup Container Registry
+# New Entry: Setup Container Registry before pulling images
 - name: Setup Container Registry
   hosts: k8s_cluster
   gather_facts: false
